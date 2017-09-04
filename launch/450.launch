@@ -1,0 +1,11 @@
+<launch>
+	<node pkg="cv_camera" type="cv_camera_node" name="cv_camera" clear_params="true" output="screen">
+		<!-- Operation Parameters -->
+		<!-- param name="topic_input_camera_info" value="/camera/camera_info" type="str"/ -->
+	</node>
+	<node pkg="450_TD" type="450_TD_node" name="image_proc" clear_params="true" output="screen">
+		<!-- Operation Parameters -->
+		<!-- param name="topic_input_camera_info" value="/camera/camera_info" type="str"/ -->
+	</node>
+
+</launch>
