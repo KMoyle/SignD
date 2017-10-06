@@ -15,6 +15,8 @@ roscpp
 std_msgs
 message_generation
 image_transport
+visualization_msgs
+tf2_ros
 )
 
 ## System dependencies are found with CMake's conventions
