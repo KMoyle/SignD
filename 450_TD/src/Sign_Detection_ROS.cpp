@@ -37,7 +37,7 @@ namespace cv{
    using std::vector;
 }
 /** Global variables */
-String black_sign_name = "/home/kyle/catkin_ws/src/SignD/450_TD/BlackSign.xml";
+String black_sign_name = "/home/kyle/catkin_ws/src/SignD/450_TD/BlackSignHAAR.xml";
 CascadeClassifier black_sign_cascade;
 String red_sign_name = "/home/kyle/catkin_ws/src/SignD/450_TD/RedSignHAAR.xml";
 CascadeClassifier red_sign_cascade;
@@ -211,11 +211,9 @@ class ImageConverter{
 
 	pub_detect_.publish( msg_out );
 	tfbr_.sendTransform( tf_out );
-			
-	//pointout.y = blacksign[0].y + blacksign[0].height*0.5;
-        //pointout.x = blacksign[0].x + blacksign[0].width*0.5;
+
     }
-/*
+
     red_sign_cascade.detectMultiScale( frame_gray, redsign, 1.1, 3, 0|CV_HAAR_SCALE_IMAGE, Size(100, 100),Size(275, 275));
     int redsigninhere = 0;
 
@@ -223,8 +221,60 @@ class ImageConverter{
     {
         Point center( redsign[i].x + redsign[i].width*0.5, redsign[i].y + redsign[i].height*0.5 );
         ellipse(cv_ptr->image, center, Size( redsign[i].width*0.5, redsign[i].height*0.5), 0, 0, 360, Scalar(255,0,255), 4, 8, 0 );
-	pointout.y = redsign[0].y + redsign[0].height*0.5;
-        pointout.x = redsign[0].x + redsign[0].width*0.5;
+
+	//Take circle estimate, and transform it to a 2D Square
+	std::vector<cv::Point2d> image_points;
+
+	//TODO: Should the be rounded?
+	double p_x =  redsign[i].x ;	//Center of circle X
+	double p_y =  redsign[i].y ;	//Center of circle Y
+	double p_d =  redsign[i].width*0.5 ;	//Radius of circle
+
+	image_points.push_back( cv::Point2d( p_x, p_y ) );	//Center
+	image_points.push_back( cv::Point2d( p_x - p_d, p_y + p_d ) );	//Top Left
+	image_points.push_back( cv::Point2d( p_x + p_d, p_y + p_d ) );	//Top Right
+	image_points.push_back( cv::Point2d( p_x - p_d, p_y - p_d ) );	//Bottom Left
+	image_points.push_back( cv::Point2d( p_x + p_d, p_y - p_d ) );	//Bottom Right
+
+	cv::Mat rvec; // Rotation in axis-angle form
+	cv::Mat tvec;
+
+	// Solve for pose
+	cv::solvePnP( model_points_,
+				image_points,
+				camera_matrix_,
+				dist_coeffs_,
+				rvec,
+				tvec );
+	//Transmit the detection message
+	geometry_msgs::PoseStamped msg_out;
+
+	msg_out.header.frame_id = camera_info_.header.frame_id;
+	msg_out.header.stamp = msg_in->header.stamp;
+
+	msg_out.pose.position.x = tvec.at<double>(0,0);
+	msg_out.pose.position.y = tvec.at<double>(1,0);
+	msg_out.pose.position.z = tvec.at<double>(2,0);
+
+	//We don't have any orientation data about the ball, so don't even bother
+	msg_out.pose.orientation.w = 1.0;
+	msg_out.pose.orientation.x = 0.0;
+	msg_out.pose.orientation.y = 0.0;
+	msg_out.pose.orientation.z = 0.0;
+
+	geometry_msgs::TransformStamped tf_out;
+	tf_out.header = msg_out.header;
+	tf_out.child_frame_id = "Red Sign";
+	tf_out.transform.translation.x = msg_out.pose.position.x;
+	tf_out.transform.translation.y = msg_out.pose.position.y;
+	tf_out.transform.translation.z = msg_out.pose.position.z;
+	tf_out.transform.rotation.w = msg_out.pose.orientation.w;
+	tf_out.transform.rotation.x = msg_out.pose.orientation.x;
+	tf_out.transform.rotation.y = msg_out.pose.orientation.y;
+	tf_out.transform.rotation.z = msg_out.pose.orientation.z;
+
+	pub_detect_.publish( msg_out );
+	tfbr_.sendTransform( tf_out );
     }
 
     yellow_sign_cascade.detectMultiScale( frame_gray, yellowsign, 1.1, 3, 0|CV_HAAR_SCALE_IMAGE, Size(100, 100),Size(275, 275));
@@ -234,15 +284,68 @@ class ImageConverter{
     {
         Point center( yellowsign[i].x + yellowsign[i].width*0.5, yellowsign[i].y + yellowsign[i].height*0.5 );
         ellipse(cv_ptr->image, center, Size( yellowsign[i].width*0.5, yellowsign[i].height*0.5), 0, 0, 360, Scalar(255,0,255), 4, 8, 0 );
-	pointout.y = yellowsign[0].y + yellowsign[0].height*0.5;
-        pointout.x = yellowsign[0].x + yellowsign[0].width*0.5;
+		//Take circle estimate, and transform it to a 2D Square
+	std::vector<cv::Point2d> image_points;
+
+	//TODO: Should the be rounded?
+	double p_x =  blacksign[i].x ;	//Center of circle X
+	double p_y =  blacksign[i].y ;	//Center of circle Y
+	double p_d =  blacksign[i].width*0.5 ;	//Radius of circle
+
+	image_points.push_back( cv::Point2d( p_x, p_y ) );	//Center
+	image_points.push_back( cv::Point2d( p_x - p_d, p_y + p_d ) );	//Top Left
+	image_points.push_back( cv::Point2d( p_x + p_d, p_y + p_d ) );	//Top Right
+	image_points.push_back( cv::Point2d( p_x - p_d, p_y - p_d ) );	//Bottom Left
+	image_points.push_back( cv::Point2d( p_x + p_d, p_y - p_d ) );	//Bottom Right
+
+	cv::Mat rvec; // Rotation in axis-angle form
+	cv::Mat tvec;
+
+	// Solve for pose
+	cv::solvePnP( model_points_,
+				image_points,
+				camera_matrix_,
+				dist_coeffs_,
+				rvec,
+				tvec );
+	//Transmit the detection message
+	geometry_msgs::PoseStamped msg_out;
+
+	msg_out.header.frame_id = camera_info_.header.frame_id;
+	msg_out.header.stamp = msg_in->header.stamp;
+
+	msg_out.pose.position.x = tvec.at<double>(0,0);
+	msg_out.pose.position.y = tvec.at<double>(1,0);
+	msg_out.pose.position.z = tvec.at<double>(2,0);
+
+	//We don't have any orientation data about the ball, so don't even bother
+	msg_out.pose.orientation.w = 1.0;
+	msg_out.pose.orientation.x = 0.0;
+	msg_out.pose.orientation.y = 0.0;
+	msg_out.pose.orientation.z = 0.0;
+
+	geometry_msgs::TransformStamped tf_out;
+	tf_out.header = msg_out.header;
+	tf_out.child_frame_id = "Yellow Sign";
+	tf_out.transform.translation.x = msg_out.pose.position.x;
+	tf_out.transform.translation.y = msg_out.pose.position.y;
+	tf_out.transform.translation.z = msg_out.pose.position.z;
+	tf_out.transform.rotation.w = msg_out.pose.orientation.w;
+	tf_out.transform.rotation.x = msg_out.pose.orientation.x;
+	tf_out.transform.rotation.y = msg_out.pose.orientation.y;
+	tf_out.transform.rotation.z = msg_out.pose.orientation.z;
+
+	pub_detect_.publish( msg_out );
+	tfbr_.sendTransform( tf_out );
     }
-*/
 
 
+	
+    ros::Rate(1);
     image_pub_.publish(cv_ptr->toImageMsg());
     //point_pub.publish(pointout);
     ROS_INFO("Image processed and sent");
+
 
   }
 };
