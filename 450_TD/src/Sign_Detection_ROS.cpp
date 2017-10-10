@@ -37,11 +37,11 @@ namespace cv{
    using std::vector;
 }
 /** Global variables */
-String black_sign_name = "/home/kyle/catkin_ws/src/SignD/450_TD/BlackSignHAAR.xml";
+String black_sign_name = "/home/kyle/catkin_ws/src/SignD/450_TD/BlackSignLBP.xml";
 CascadeClassifier black_sign_cascade;
-String red_sign_name = "/home/kyle/catkin_ws/src/SignD/450_TD/RedSignHAAR.xml";
+String red_sign_name = "/home/kyle/catkin_ws/src/SignD/450_TD/RedSignLBP.xml";
 CascadeClassifier red_sign_cascade;
-String yellow_sign_name = "/home/kyle/catkin_ws/src/SignD/450_TD/YellowSignHAAR.xml";
+String yellow_sign_name = "/home/kyle/catkin_ws/src/SignD/450_TD/YellowSignLBP.xml";
 CascadeClassifier yellow_sign_cascade;
 
 class ImageConverter{
@@ -52,7 +52,9 @@ class ImageConverter{
   	image_transport::ImageTransport it_;
   	image_transport::Subscriber image_sub_;
   	image_transport::Publisher image_pub_;
-  	ros::Publisher pub_detect_;
+  	ros::Publisher pub_detect_BS_;
+	ros::Publisher pub_detect_YS_;
+	ros::Publisher pub_detect_RS_;
 
   	bool got_camera_info_;
   	bool param_camera_rectified_;
@@ -80,12 +82,14 @@ class ImageConverter{
     		image_sub_ = it_.subscribe(SUB_TOPIC, 1,&ImageConverter::imageCb, this);
 
     		image_pub_ = it_.advertise(PUB_TOPIC, 1);
-    		pub_detect_ = nh_.advertise<geometry_msgs::PoseStamped>("/object_location", 1);
+    		pub_detect_RS_ = nh_.advertise<geometry_msgs::PoseStamped>("/red_sign_location", 1);
+		pub_detect_YS_ = nh_.advertise<geometry_msgs::PoseStamped>("/yellow_sign_location", 1);
+		pub_detect_BS_ = nh_.advertise<geometry_msgs::PoseStamped>("/black_sign_location", 1);
 
     		sub_camera_info_ = nh_.subscribe<sensor_msgs::CameraInfo> ("/cv_camera/camera_info",1, &ImageConverter::camera_info_cb, this);
     		//topic_input_camera_info_( "input_camera_info" );
 
-		double sign_rad = 5/ 2.0;
+		double sign_rad = 3/ 2.0;
 		model_points_.push_back( cv::Point3d( 0.0, 0.0, 0.0 ) );	//Center
 		model_points_.push_back( cv::Point3d(-sign_rad, sign_rad, 0.0 ) );	//Top Left
 		model_points_.push_back( cv::Point3d( sign_rad, sign_rad, 0.0 ) );	//Top Right
@@ -209,7 +213,7 @@ class ImageConverter{
 	tf_out.transform.rotation.y = msg_out.pose.orientation.y;
 	tf_out.transform.rotation.z = msg_out.pose.orientation.z;
 
-	pub_detect_.publish( msg_out );
+	pub_detect_BS_.publish( msg_out );
 	tfbr_.sendTransform( tf_out );
 
     }
@@ -273,7 +277,7 @@ class ImageConverter{
 	tf_out.transform.rotation.y = msg_out.pose.orientation.y;
 	tf_out.transform.rotation.z = msg_out.pose.orientation.z;
 
-	pub_detect_.publish( msg_out );
+	pub_detect_RS_.publish( msg_out );
 	tfbr_.sendTransform( tf_out );
     }
 
@@ -288,9 +292,9 @@ class ImageConverter{
 	std::vector<cv::Point2d> image_points;
 
 	//TODO: Should the be rounded?
-	double p_x =  blacksign[i].x ;	//Center of circle X
-	double p_y =  blacksign[i].y ;	//Center of circle Y
-	double p_d =  blacksign[i].width*0.5 ;	//Radius of circle
+	double p_x =  yellowsign[i].x ;	//Center of circle X
+	double p_y =  yellowsign[i].y ;	//Center of circle Y
+	double p_d =  yellowsign[i].width*0.5 ;	//Radius of circle
 
 	image_points.push_back( cv::Point2d( p_x, p_y ) );	//Center
 	image_points.push_back( cv::Point2d( p_x - p_d, p_y + p_d ) );	//Top Left
@@ -335,7 +339,7 @@ class ImageConverter{
 	tf_out.transform.rotation.y = msg_out.pose.orientation.y;
 	tf_out.transform.rotation.z = msg_out.pose.orientation.z;
 
-	pub_detect_.publish( msg_out );
+	pub_detect_YS_.publish( msg_out );
 	tfbr_.sendTransform( tf_out );
     }
 
