@@ -7,6 +7,7 @@
 		<!-- Operation Parameters -->
 		<!-- param name ="topic_input_camera_info" value="/cv_camera/camera_info" type="str" / -->
 		<param name ="topic_input_image" value="/cv_camera/image_raw" />
+		<param name ="rate" value="2" />
 	</node>
 	<node pkg="450_TD" type="450_TD_node" name="image_proc" clear_params="true" output="screen">
 		<!-- Operation Parameters -->
