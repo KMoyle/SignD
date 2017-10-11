@@ -37,11 +37,11 @@ namespace cv{
    using std::vector;
 }
 /** Global variables */
-String black_sign_name = "/home/kyle/catkin_ws/src/SignD/450_TD/BlackSignLBP.xml";
+String black_sign_name = "/home/kylesm/catkin_ws/src/SignD/450_TD/BlackSignLBP.xml";
 CascadeClassifier black_sign_cascade;
-String red_sign_name = "/home/kyle/catkin_ws/src/SignD/450_TD/RedSignLBP.xml";
+String red_sign_name = "/home/kylesm/catkin_ws/src/SignD/450_TD/RedSignLBP.xml";
 CascadeClassifier red_sign_cascade;
-String yellow_sign_name = "/home/kyle/catkin_ws/src/SignD/450_TD/YellowSignLBP.xml";
+String yellow_sign_name = "/home/kylesm/catkin_ws/src/SignD/450_TD/YellowSignLBP.xml";
 CascadeClassifier yellow_sign_cascade;
 
 class ImageConverter{
@@ -74,7 +74,8 @@ class ImageConverter{
 
   public:
    	ImageConverter(std::string topic) : 
-		it_(nh_)
+		it_(nh_),
+		param_camera_rectified_( false )
 		//topic_input_camera_info( "input_camera_info" )
 	{ 
 
@@ -89,12 +90,14 @@ class ImageConverter{
     		sub_camera_info_ = nh_.subscribe<sensor_msgs::CameraInfo> ("/cv_camera/camera_info",1, &ImageConverter::camera_info_cb, this);
     		//topic_input_camera_info_( "input_camera_info" );
 
-		double sign_rad = 3/ 2.0;
+		double sign_rad = 0.1/ 2.0;
 		model_points_.push_back( cv::Point3d( 0.0, 0.0, 0.0 ) );	//Center
 		model_points_.push_back( cv::Point3d(-sign_rad, sign_rad, 0.0 ) );	//Top Left
 		model_points_.push_back( cv::Point3d( sign_rad, sign_rad, 0.0 ) );	//Top Right
 		model_points_.push_back( cv::Point3d(-sign_rad,-sign_rad, 0.0 ) );	//Bottom Left
 		model_points_.push_back( cv::Point3d( sign_rad,-sign_rad, 0.0 ) );	//Bottom Right
+
+		nh_.param( "camera_is_rectified", param_camera_rectified_, param_camera_rectified_ );
 
   	}
   ~ImageConverter() {}
@@ -154,7 +157,7 @@ class ImageConverter{
     equalizeHist( frame_gray, frame_gray );
 
    //-- Detect Sign
-    black_sign_cascade.detectMultiScale( frame_gray, blacksign, 1.1, 3, 0|CV_HAAR_SCALE_IMAGE, Size(100, 100),Size(275, 275));
+    black_sign_cascade.detectMultiScale( frame_gray, blacksign, 1.1, 3, 0|CV_HAAR_SCALE_IMAGE, Size(100, 100),Size(200, 200));
     int blacksigninhere = 0;
 
     for( size_t i = 0; i < blacksign.size(); i++ )
