@@ -15,6 +15,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <cv.h>
 
+#include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include "opencv2/opencv.hpp"
 #include <list>
@@ -27,7 +28,7 @@
 #include "time.h"
 #include <cmath>
 	
-static const std::string SUB_TOPIC = "/cv_camera/image_raw";
+static const std::string SUB_TOPIC = "/camera/image_raw";
 static const std::string PUB_TOPIC = "/processed_image";
 
 using namespace cv;
@@ -37,18 +38,19 @@ namespace cv{
    using std::vector;
 }
 /** Global variables */
-String black_sign_name = "/home/kylesm/catkin_ws/src/SignD/450_TD/BlackSignLBP.xml";
+String black_sign_name = "/home/odroid/catkin_ws/src/SignD/450_TD/BlackSignLBP.xml";
 CascadeClassifier black_sign_cascade;
-String red_sign_name = "/home/kylesm/catkin_ws/src/SignD/450_TD/RedSignLBP.xml";
+String red_sign_name = "/home/odroid/catkin_ws/src/SignD/450_TD/RedSignLBP.xml";
 CascadeClassifier red_sign_cascade;
-String yellow_sign_name = "/home/kylesm/catkin_ws/src/SignD/450_TD/YellowSignLBP.xml";
+String yellow_sign_name = "/home/odroid/catkin_ws/src/SignD/450_TD/YellowSignHAAR_01.xml";
 CascadeClassifier yellow_sign_cascade;
+geometry_msgs::PoseStamped pose_info_;
 
 class ImageConverter{
   private:
 	ros::NodeHandle nh_;
   	ros::Subscriber sub_camera_info_;
-
+	ros::Subscriber vicon_pose_;
   	image_transport::ImageTransport it_;
   	image_transport::Subscriber image_sub_;
   	image_transport::Publisher image_pub_;
@@ -81,16 +83,16 @@ class ImageConverter{
 
     		// Subscribe to input video feed and publish output video feed
     		image_sub_ = it_.subscribe(SUB_TOPIC, 1,&ImageConverter::imageCb, this);
-
+		vicon_pose_ = nh_.subscribe("/vicon/UAVTAQG2/UAVTAQG2", 1, &ImageConverter::pose_info_cb,this);
     		image_pub_ = it_.advertise(PUB_TOPIC, 1);
     		pub_detect_RS_ = nh_.advertise<geometry_msgs::PoseStamped>("/red_sign_location", 1);
 		pub_detect_YS_ = nh_.advertise<geometry_msgs::PoseStamped>("/yellow_sign_location", 1);
 		pub_detect_BS_ = nh_.advertise<geometry_msgs::PoseStamped>("/black_sign_location", 1);
 
-    		sub_camera_info_ = nh_.subscribe<sensor_msgs::CameraInfo> ("/cv_camera/camera_info",1, &ImageConverter::camera_info_cb, this);
+    		sub_camera_info_ = nh_.subscribe<sensor_msgs::CameraInfo> ("/camera/camera_info",1, &ImageConverter::camera_info_cb, this);
     		//topic_input_camera_info_( "input_camera_info" );
 
-		double sign_rad = 0.1/ 2.0;
+		double sign_rad = 0.1;
 		model_points_.push_back( cv::Point3d( 0.0, 0.0, 0.0 ) );	//Center
 		model_points_.push_back( cv::Point3d(-sign_rad, sign_rad, 0.0 ) );	//Top Left
 		model_points_.push_back( cv::Point3d( sign_rad, sign_rad, 0.0 ) );	//Top Right
@@ -102,6 +104,11 @@ class ImageConverter{
   	}
   ~ImageConverter() {}
 
+   void pose_info_cb( const geometry_msgs::PoseStamped::ConstPtr& pose_in ){
+
+	pose_info_ = *pose_in;	
+
+}
    //we can use camera info to correct distortions, get image size etc
    void camera_info_cb( const sensor_msgs::CameraInfo::ConstPtr& msg_in ){
 	camera_info_ = *msg_in;
@@ -189,34 +196,61 @@ class ImageConverter{
 				dist_coeffs_,
 				rvec,
 				tvec );
+/*	tf2::Quaternion qc;
+	tf2::Quaternion qv;
+	tf2::Quaternion pos;
+
+	qv.setX(pose_info_.pose.orientation.x);
+	qv.setY(pose_info_.pose.orientation.y);
+	qv.setZ(pose_info_.pose.orientation.z);
+	qv.setW(pose_info_.pose.orientation.w);
+
+	qc.setX(0);
+	qc.setY(0.7071);
+	qc.setZ(0);
+	qc.setW(0.7071);
+
+	qc.normalize();
+	qv.normalize();
+	pos.setX(tvec.at<double>(0,0));
+	pos.setY(tvec.at<double>(1,0));
+	pos.setZ(tvec.at<double>(2,0));
+	pos.setW(0);
+
+	pos = qc.inverse()*pos;
+	pos = qv.inverse()*pos;
+
+
 	//Transmit the detection message
 	geometry_msgs::PoseStamped msg_out;
 
-	msg_out.header.frame_id = camera_info_.header.frame_id;
+	msg_out.header.frame_id = "map";
 	msg_out.header.stamp = msg_in->header.stamp;
 
-	msg_out.pose.position.x = tvec.at<double>(0,0);
-	msg_out.pose.position.y = tvec.at<double>(1,0);
-	msg_out.pose.position.z = tvec.at<double>(2,0);
+	msg_out.pose.position.x = pos.getX() + pose_info_.pose.position.x;
+	msg_out.pose.position.y = pos.getY() + pose_info_.pose.position.y;
+	msg_out.pose.position.z = pos.getZ() + pose_info_.pose.position.z;
 
 	//We don't have any orientation data about the ball, so don't even bother
 	msg_out.pose.orientation.w = 1.0;
 	msg_out.pose.orientation.x = 0.0;
 	msg_out.pose.orientation.y = 0.0;
 	msg_out.pose.orientation.z = 0.0;
-
+*/
 	geometry_msgs::TransformStamped tf_out;
-	tf_out.header = msg_out.header;
-	tf_out.child_frame_id = "Black Sign";
-	tf_out.transform.translation.x = msg_out.pose.position.x;
-	tf_out.transform.translation.y = msg_out.pose.position.y;
-	tf_out.transform.translation.z = msg_out.pose.position.z;
-	tf_out.transform.rotation.w = msg_out.pose.orientation.w;
-	tf_out.transform.rotation.x = msg_out.pose.orientation.x;
-	tf_out.transform.rotation.y = msg_out.pose.orientation.y;
-	tf_out.transform.rotation.z = msg_out.pose.orientation.z;
+	tf_out.header.frame_id = "camera";
+	tf_out.header.stamp = msg_in->header.stamp;
+	tf_out.child_frame_id = "BlackSign";
+	tf_out.transform.translation.x =tvec.at<double>(0,0);
+	tf_out.transform.translation.y = tvec.at<double>(1,0);
+	tf_out.transform.translation.z =  tvec.at<double>(2,0);
 
-	pub_detect_BS_.publish( msg_out );
+	tf_out.transform.rotation.w = 1.0;
+	tf_out.transform.rotation.x = 0.0;
+	tf_out.transform.rotation.y = 0.0;
+	tf_out.transform.rotation.z = 0.0;
+
+//	pub_detect_BS_.publish( msg_out );
 	tfbr_.sendTransform( tf_out );
 
     }

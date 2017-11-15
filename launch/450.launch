@@ -3,15 +3,39 @@
 	<!-- Launch script for sign dection -->
 
 
-	<node pkg="cv_camera" type="cv_camera_node" name="cv_camera" clear_params="true" output="screen">
-		<!-- Operation Parameters -->
-		<!-- param name ="topic_input_camera_info" value="/cv_camera/camera_info" type="str" / -->
+	<!--node pkg="cv_camera" type="cv_camera_node" name="cv_camera" clear_params="true" output="screen">
 		<param name ="topic_input_image" value="/cv_camera/image_raw" />
 		<param name ="rate" value="7" />
-	</node>
+	</node-->
+
 	<node pkg="450_TD" type="450_TD_node" name="image_proc" clear_params="true" output="screen">
 		<!-- Operation Parameters -->
 		<!-- param name="topic_input_camera_info" value="/camera/camera_info" type="str"/ -->
 	</node>
 
+   <!-- launch video stream -->
+   <include file="$(find video_stream_opencv)/launch/camera.launch" >
+   		<!-- node name and ros graph name -->
+	  	<arg name="camera_name" value="camera" />
+	  	<!-- means video device 0, /dev/video0 -->
+	  	<arg name="video_stream_provider" value="0" />
+	  	<!-- throttling the querying of frames to -->
+	  	<arg name="fps" value="5" />
+	  	<!-- setting frame_id -->
+	  	<arg name="frame_id" value="webcam_optical_frame" />
+	  	<!-- camera info loading, take care as it needs the "file:///" at the start , e.g.:
+	  	"file:///$(find your_camera_package)/config/your_camera.yaml" -->
+	  	<arg name="camera_info_url" value="" />
+	  	<!-- flip the image horizontally (mirror it) -->
+	  	<arg name="flip_horizontal" value="false" />
+	  	<!-- flip the image vertically -->
+	  	<arg name="flip_vertical" value="false" />
+		<!-- force width and height, 0 means no forcing -->
+	    <!-- 
+	    <arg name="width" value="0"/>
+	    <arg name="height" value="0"/>
+		-->
+	  	<!-- visualize on an image_view window the stream generated -->
+	  	<arg name="visualize" value="false" />
+   </include>
 </launch>
