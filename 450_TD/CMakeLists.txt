@@ -16,6 +16,7 @@ std_msgs
 message_generation
 image_transport
 visualization_msgs
+tf2
 tf2_ros
 )
 
