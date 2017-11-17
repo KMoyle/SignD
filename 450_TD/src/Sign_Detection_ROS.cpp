@@ -1,3 +1,4 @@
+
 #include "ros/ros.h"
 #include "opencv2/core/core.hpp"
 #include <opencv2/calib3d.hpp>
@@ -20,7 +21,7 @@
 #include "opencv2/opencv.hpp"
 #include <list>
 #include "std_msgs/Int64.h"
-
+#include "std_msgs/Time.h"
 #include <string>
 #include <iostream>
 
@@ -85,9 +86,9 @@ class ImageConverter{
     		image_sub_ = it_.subscribe(SUB_TOPIC, 1,&ImageConverter::imageCb, this);
 		vicon_pose_ = nh_.subscribe("/vicon/UAVTAQG2/UAVTAQG2", 1, &ImageConverter::pose_info_cb,this);
     		image_pub_ = it_.advertise(PUB_TOPIC, 1);
-    		pub_detect_RS_ = nh_.advertise<geometry_msgs::PoseStamped>("/red_sign_location", 1);
-		pub_detect_YS_ = nh_.advertise<geometry_msgs::PoseStamped>("/yellow_sign_location", 1);
-		pub_detect_BS_ = nh_.advertise<geometry_msgs::PoseStamped>("/black_sign_location", 1);
+    		pub_detect_RS_ = nh_.advertise<std_msgs::Time>("/red_sign_location", 1);
+		pub_detect_YS_ = nh_.advertise<std_msgs::Time>("/yellow_sign_location", 1);
+		pub_detect_BS_ = nh_.advertise<std_msgs::Time>("/black_sign_location", 1);
 
     		sub_camera_info_ = nh_.subscribe<sensor_msgs::CameraInfo> ("/camera/camera_info",1, &ImageConverter::camera_info_cb, this);
     		//topic_input_camera_info_( "input_camera_info" );
@@ -233,9 +234,6 @@ class ImageConverter{
 
 	//We don't have any orientation data about the ball, so don't even bother
 	msg_out.pose.orientation.w = 1.0;
-	msg_out.pose.orientation.x = 0.0;
-	msg_out.pose.orientation.y = 0.0;
-	msg_out.pose.orientation.z = 0.0;
 */
 	geometry_msgs::TransformStamped tf_out;
 	tf_out.header.frame_id = "camera";
@@ -249,8 +247,10 @@ class ImageConverter{
 	tf_out.transform.rotation.x = 0.0;
 	tf_out.transform.rotation.y = 0.0;
 	tf_out.transform.rotation.z = 0.0;
-
-//	pub_detect_BS_.publish( msg_out );
+	
+	std_msgs::Time ts;
+	ts.data = tf_out.header.stamp;
+	pub_detect_BS_.publish( ts );
 	tfbr_.sendTransform( tf_out );
 
     }
@@ -288,34 +288,23 @@ class ImageConverter{
 				rvec,
 				tvec );
 	//Transmit the detection message
-	geometry_msgs::PoseStamped msg_out;
+        geometry_msgs::TransformStamped tf_out;
+        tf_out.header.frame_id = "camera";
+        tf_out.header.stamp = msg_in->header.stamp;
+        tf_out.child_frame_id = "RedSign";
+        tf_out.transform.translation.x =tvec.at<double>(0,0);
+        tf_out.transform.translation.y = tvec.at<double>(1,0);
+        tf_out.transform.translation.z =  tvec.at<double>(2,0);
 
-	msg_out.header.frame_id = camera_info_.header.frame_id;
-	msg_out.header.stamp = msg_in->header.stamp;
+        tf_out.transform.rotation.w = 1.0;
+        tf_out.transform.rotation.x = 0.0;
+        tf_out.transform.rotation.y = 0.0;
+        tf_out.transform.rotation.z = 0.0;
 
-	msg_out.pose.position.x = tvec.at<double>(0,0);
-	msg_out.pose.position.y = tvec.at<double>(1,0);
-	msg_out.pose.position.z = tvec.at<double>(2,0);
-
-	//We don't have any orientation data about the ball, so don't even bother
-	msg_out.pose.orientation.w = 1.0;
-	msg_out.pose.orientation.x = 0.0;
-	msg_out.pose.orientation.y = 0.0;
-	msg_out.pose.orientation.z = 0.0;
-
-	geometry_msgs::TransformStamped tf_out;
-	tf_out.header = msg_out.header;
-	tf_out.child_frame_id = "Red Sign";
-	tf_out.transform.translation.x = msg_out.pose.position.x;
-	tf_out.transform.translation.y = msg_out.pose.position.y;
-	tf_out.transform.translation.z = msg_out.pose.position.z;
-	tf_out.transform.rotation.w = msg_out.pose.orientation.w;
-	tf_out.transform.rotation.x = msg_out.pose.orientation.x;
-	tf_out.transform.rotation.y = msg_out.pose.orientation.y;
-	tf_out.transform.rotation.z = msg_out.pose.orientation.z;
-
-	pub_detect_RS_.publish( msg_out );
-	tfbr_.sendTransform( tf_out );
+        std_msgs::Time ts;
+        ts.data = tf_out.header.stamp;
+        pub_detect_RS_.publish( ts );
+        tfbr_.sendTransform( tf_out );
     }
 
     yellow_sign_cascade.detectMultiScale( frame_gray, yellowsign, 1.1, 3, 0|CV_HAAR_SCALE_IMAGE, Size(100, 100),Size(275, 275));
@@ -349,35 +338,23 @@ class ImageConverter{
 				dist_coeffs_,
 				rvec,
 				tvec );
-	//Transmit the detection message
-	geometry_msgs::PoseStamped msg_out;
+        geometry_msgs::TransformStamped tf_out;
+        tf_out.header.frame_id = "camera";
+        tf_out.header.stamp = msg_in->header.stamp;
+        tf_out.child_frame_id = "YellowSign";
+        tf_out.transform.translation.x =tvec.at<double>(0,0);
+        tf_out.transform.translation.y = tvec.at<double>(1,0);
+        tf_out.transform.translation.z =  tvec.at<double>(2,0);
 
-	msg_out.header.frame_id = camera_info_.header.frame_id;
-	msg_out.header.stamp = msg_in->header.stamp;
+        tf_out.transform.rotation.w = 1.0;
+        tf_out.transform.rotation.x = 0.0;
+        tf_out.transform.rotation.y = 0.0;
+        tf_out.transform.rotation.z = 0.0;
 
-	msg_out.pose.position.x = tvec.at<double>(0,0);
-	msg_out.pose.position.y = tvec.at<double>(1,0);
-	msg_out.pose.position.z = tvec.at<double>(2,0);
-
-	//We don't have any orientation data about the ball, so don't even bother
-	msg_out.pose.orientation.w = 1.0;
-	msg_out.pose.orientation.x = 0.0;
-	msg_out.pose.orientation.y = 0.0;
-	msg_out.pose.orientation.z = 0.0;
-
-	geometry_msgs::TransformStamped tf_out;
-	tf_out.header = msg_out.header;
-	tf_out.child_frame_id = "Yellow Sign";
-	tf_out.transform.translation.x = msg_out.pose.position.x;
-	tf_out.transform.translation.y = msg_out.pose.position.y;
-	tf_out.transform.translation.z = msg_out.pose.position.z;
-	tf_out.transform.rotation.w = msg_out.pose.orientation.w;
-	tf_out.transform.rotation.x = msg_out.pose.orientation.x;
-	tf_out.transform.rotation.y = msg_out.pose.orientation.y;
-	tf_out.transform.rotation.z = msg_out.pose.orientation.z;
-
-	pub_detect_YS_.publish( msg_out );
-	tfbr_.sendTransform( tf_out );
+        std_msgs::Time ts;
+        ts.data = tf_out.header.stamp;
+        pub_detect_YS_.publish( ts );
+        tfbr_.sendTransform( tf_out );
     }
 
 
